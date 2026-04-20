@@ -267,7 +267,7 @@ select{padding:5px 9px;font-size:12px;border:1px solid var(--border);border-radi
 <div class="modal-wrap" id="m-aluno"><div class="modal">
   <div class="modal-hd"><h3>Novo aluno</h3></div>
   <div class="field"><label>Nome completo</label><input id="i-anome" placeholder="Nome do aluno"/></div>
-  <div class="field"><label>Matrícula</label><input id="i-amat" placeholder="Ex: 2024001"/></div>
+  <div class="field"><label>Matrícula</label><input id="i-amat" placeholder="Apenas 8 números" maxlength="8" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0,8)"/></div>
   <div class="modal-btns"><button class="btn" onclick="cm('m-aluno')">Cancelar</button><button class="btn-accent" onclick="addAluno()">Adicionar</button></div>
 </div></div>
 
@@ -318,10 +318,14 @@ select{padding:5px 9px;font-size:12px;border:1px solid var(--border);border-radi
   <div class="top-actions">
     <div class="top-search">
       <svg viewBox="0 0 20 20"><path d="M9 3a6 6 0 100 12A6 6 0 009 3zm-8 6a8 8 0 1114.32 4.906l4.387 4.387-1.414 1.414-4.387-4.387A8 8 0 011 9z"/></svg>
-      <input type="text" id="global-search" placeholder="Buscar aluno ou matrícula..." oninput="globalSearch(this.value)"/>
+      <input type="text" id="global-search" placeholder="Buscar aluno..." oninput="globalSearch(this.value)"/>
     </div>
     <button class="btn-icon" onclick="window.toggleTheme()" id="btn-theme" style="font-size:16px; padding:2px 8px;">☀️</button>
-    <button class="btn-green" onclick="exportBackup()">Backup</button>
+    
+    <input type="file" id="i-import" style="display:none" accept=".json" onchange="importBackup(this)">
+    <button class="btn" onclick="document.getElementById('i-import').click()">Importar</button>
+    <button class="btn-green" onclick="exportBackup()">Exportar</button>
+    
     <span class="saved-tag" id="saved-tag">Nuvem Sincronizada ✓</span>
   </div>
 </div>
@@ -389,7 +393,7 @@ select{padding:5px 9px;font-size:12px;border:1px solid var(--border);border-radi
         if (window.flashSync) window.flashSync(); 
       }
     } catch (e) {
-      console.error("Erro ao sincronizar com a Nuvem:", e);
+      console.error("Erro ao sincronizar:", e);
     }
   };
 </script>
@@ -397,21 +401,19 @@ select{padding:5px 9px;font-size:12px;border:1px solid var(--border);border-radi
 <script>
 let nid=2000;function uid(){return 'u'+(nid++)}
 
-// --- LÓGICA DO TEMA CLARO/ESCURO ---
+// LÓGICA DO TEMA CLARO/ESCURO
 window.toggleTheme = function() {
   const isLight = document.body.classList.toggle('light-theme');
   document.getElementById('btn-theme').textContent = isLight ? '🌙' : '☀️';
   localStorage.setItem('diario_theme', isLight ? 'light' : 'dark');
 };
 
-// Verifica qual era o tema escolhido ao carregar a página
 if (localStorage.getItem('diario_theme') === 'light') {
   document.body.classList.add('light-theme');
   window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-theme').textContent = '🌙';
   });
 }
-// ------------------------------------
 
 window.flashSync = function(){
   const el=document.getElementById('saved-tag');
@@ -428,9 +430,7 @@ var db = defDB();
 let actTid=null, actTab='notas', mAtivCtx=null, editAtivId=null, mObsCtx=null, mJustCtx=null;
 
 window.saveDB = function() {
-  if (window.cloudSave) {
-    window.cloudSave(); 
-  }
+  if (window.cloudSave) window.cloudSave(); 
 };
 function saveRemoteDB() { saveDB(); }
 
@@ -444,7 +444,7 @@ window.renderApp = function() {
 };
 
 const COLORS=['#4FC3F7','#4CAF82','#F59E3F','#EF9FBD','#B39DDB','#80DEEA','#FFCC80','#CE93D8'];
-function turmaColor(tid){const idx=Object.keys(db.turmas||{}).indexOf?db.turmas.findIndex(t=>t.id===tid)%COLORS.length:0;return COLORS[Math.max(0,db.turmas.findIndex(t=>t.id===tid))%COLORS.length]}
+function turmaColor(tid){return COLORS[Math.max(0,db.turmas.findIndex(t=>t.id===tid))%COLORS.length]}
 function avatarColor(name){const i=name.charCodeAt(0)%COLORS.length;const c=COLORS[i];return{bg:c+'22',c,border:c+'44'}}
 function initials(n){return n.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase()}
 
@@ -458,7 +458,6 @@ function fmtD(d){const[y,m,dd]=d.split('-');return`${dd}/${m}`}
 function fph(c){return c===40?2:3}
 function maxF(c){return Math.floor(c*.25)}
 
-// NOVO CÁLCULO DE NOTA (Soma Direta)
 function notaU(al,tid,un){
   const av=avs(tid)[un];
   if(!av.length) return 0;
@@ -553,18 +552,17 @@ function renderTab(){
   else if(actTab==='resumo')rResumo();else rHist();
 }
 
-// NAVEGAÇÃO DE INPUTS COM O ENTER
 function navEnter(e, el) {
   if (e.key === 'Enter') {
     e.preventDefault();
-    el.blur(); // Dispara o salvamento (onchange)
+    el.blur(); 
     const atId = el.dataset.at;
     const inputs = Array.from(document.querySelectorAll(`input[data-at="${atId}"]`));
     const currentIndex = inputs.indexOf(el);
     if (currentIndex >= 0 && currentIndex < inputs.length - 1) {
       const nextInput = inputs[currentIndex + 1];
       nextInput.focus();
-      nextInput.select(); // Seleciona o valor para fácil edição
+      nextInput.select(); 
     }
   }
 }
@@ -585,11 +583,9 @@ function rNotas(){
   if(av.u2.length)html+=`<th colspan="${av.u2.length+1}" style="border-left:1px solid var(--border2);color:#9DB8CC">Unidade II</th>`;
   html+=`<th>Média</th><th>Situação</th><th></th></tr><tr><th></th>`;
   
-  // Headers Unidade 1
   av.u1.forEach((a,i)=>html+=`<th style="border-left:${i===0?'1px solid var(--border2)':'none'};font-weight:500;text-transform:none;letter-spacing:0;font-size:11px;color:var(--text2)">${a.nome}<br><span style="font-size:9px;color:var(--text3);font-family:var(--mono)">/${a.val} pts</span></th>`);
   if(av.u1.length)html+=`<th style="color:#4FC3F7;border-left:1px solid var(--border2);text-transform:none;letter-spacing:0">U1 Soma</th>`;
   
-  // Headers Unidade 2
   av.u2.forEach((a,i)=>html+=`<th style="border-left:${i===0?'1px solid var(--border2)':'none'};font-weight:500;text-transform:none;letter-spacing:0;font-size:11px;color:var(--text2)">${a.nome}<br><span style="font-size:9px;color:var(--text3);font-family:var(--mono)">/${a.val} pts</span></th>`);
   if(av.u2.length)html+=`<th style="color:#4CAF82;border-left:1px solid var(--border2);text-transform:none;letter-spacing:0">U2 Soma</th>`;
   html+=`<th></th><th></th><th></th></tr></thead><tbody>`;
@@ -603,11 +599,9 @@ function rNotas(){
       <div><div style="font-weight:500;font-size:12px">${al.nome}</div><div style="font-size:10px;color:var(--text3);font-family:var(--mono)">${al.mat}</div></div>
     </div></td>`;
     
-    // Inputs U1 (com onkeydown adicionado)
     av.u1.forEach((a,i)=>html+=`<td style="border-left:${i===0?'1px solid var(--border)':'none'}"><input type="number" min="0" max="${a.val}" step="0.5" value="${(al.notas[a.id]||0).toFixed(1)}" data-al="${al.id}" data-at="${a.id}" data-max="${a.val}" onchange="updN(this)" onkeydown="navEnter(event, this)"/></td>`);
     if(av.u1.length)html+=`<td style="font-weight:700;color:#4FC3F7;border-left:1px solid var(--border);font-family:var(--mono);font-size:13px">${nu1.toFixed(2)}</td>`;
     
-    // Inputs U2 (com onkeydown adicionado)
     av.u2.forEach((a,i)=>html+=`<td style="border-left:${i===0?'1px solid var(--border)':'none'}"><input type="number" min="0" max="${a.val}" step="0.5" value="${(al.notas[a.id]||0).toFixed(1)}" data-al="${al.id}" data-at="${a.id}" data-max="${a.val}" onchange="updN(this)" onkeydown="navEnter(event, this)"/></td>`);
     if(av.u2.length)html+=`<td style="font-weight:700;color:#4CAF82;border-left:1px solid var(--border);font-family:var(--mono);font-size:13px">${nu2.toFixed(2)}</td>`;
     
@@ -727,7 +721,6 @@ function addDia(){
 }
 function delDia(did){if(!confirm('Remover aula?'))return;db.frequencias[actTid]=dias(actTid).filter(d=>d.id!==did);delete db.presencas[pk(actTid,did)];saveDB();renderTab()}
 
-// CONFIGURAÇÃO DE ATIVIDADES (Edição Adicionada)
 function rConfig(){
   const tid=actTid;const av=avs(tid);
   function uH(un,label,cor){
@@ -884,7 +877,15 @@ function dupTurma(){
 
 function importCSV(){
   const raw=document.getElementById('i-csv').value.trim();if(!raw){alert('Cole os dados');return}
-  let added=0;raw.split('\n').filter(l=>l.trim()).forEach(l=>{const p=l.split(',');const nome=(p[0]||'').trim();const mat=(p[1]||'').trim();if(nome){als(actTid).push({id:uid(),nome,mat:mat||'—',notas:{},recup:0,obs:''});added++;}});
+  let added=0;
+  raw.split('\n').filter(l=>l.trim()).forEach(l=>{
+    const p=l.split(',');const nome=(p[0]||'').trim();const mat=(p[1]||'').trim();
+    if(nome){als(actTid).push({id:uid(),nome,mat:mat||'—',notas:{},recup:0,obs:''});added++;}
+  });
+  
+  // ORDEM ALFABÉTICA APÓS IMPORTAR
+  als(actTid).sort((a,b) => a.nome.localeCompare(b.nome));
+  
   document.getElementById('i-csv').value='';cm('m-csv');saveDB();renderTab();alert(`${added} aluno(s) importado(s)!`);
 }
 
@@ -924,6 +925,10 @@ function addAluno(){
   if(!nome){alert('Informe o nome');return}
   if(!actTid){alert('Selecione uma turma primeiro.');return}
   als(actTid).push({id:uid(),nome,mat:mat||'—',notas:{},recup:0,obs:''});
+  
+  // ORDEM ALFABÉTICA APÓS ADICIONAR ALUNO
+  als(actTid).sort((a,b) => a.nome.localeCompare(b.nome));
+  
   cm('m-aluno');document.getElementById('i-anome').value='';document.getElementById('i-amat').value='';
   saveDB();renderTab();
 }
@@ -984,8 +989,26 @@ function exPdfChamada(){
   doc.save(`chamada_${s.label}_${t.nome.replace(/[^a-z0-9]/gi,'_')}.pdf`);
 }
 
+// RESTAURAÇÃO DE BACKUP
 function exportBackup(){const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`diario_backup_${new Date().toISOString().slice(0,10)}.json`;a.click()}
-function importBackup(input){const f=input.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{db=JSON.parse(e.target.result);saveDB();actTid=null;renderSidebar();renderMain();alert('Backup restaurado!');}catch(e){alert('Arquivo inválido.')}};r.readAsText(f);input.value=''}
+window.importBackup = function(input) {
+  const f = input.files[0];
+  if(!f) return;
+  const r = new FileReader();
+  r.onload = e => {
+    try {
+      window.db = JSON.parse(e.target.result);
+      saveDB(); // Ao puxar o JSON, ele automaticamente empurra e sincroniza com o Firebase
+      actTid = null;
+      renderApp();
+      alert('Backup restaurado e sincronizado na nuvem com sucesso!');
+    } catch(err) {
+      alert('Arquivo de backup inválido.');
+    }
+  };
+  r.readAsText(f);
+  input.value = '';
+}
 
 function om(id){document.getElementById(id).classList.add('open')}
 function cm(id){document.getElementById(id).classList.remove('open')}
