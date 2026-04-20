@@ -26,25 +26,26 @@
   --font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
   --shadow:0 2px 16px rgba(0,0,0,.35);
 }
-  /* TEMA CLARO (LIGHT THEME) */
+
+/* TEMA CLARO (LIGHT THEME) */
 body.light-theme {
-  --navy: #F4F7F9;       /* Fundo principal (cinza bem claro) */
-  --navy2: #FFFFFF;      /* Barra superior e lateral (branco) */
-  --navy3: #E2E8F0;      /* Inputs e botões (cinza suave) */
+  --navy: #F4F7F9;
+  --navy2: #FFFFFF;
+  --navy3: #E2E8F0;
   --slate: #CBD5E1; 
   --slate2: #94A3B8;
-  --accent: #0284C7;     /* Azul primário mais escuro para contraste */
+  --accent: #0284C7;
   --accent2: #0369A1; 
   --accent-dim: #E0F2FE;
   --gold: #D97706; 
   --gold-dim: #FEF3C7;
-  --green: #059669;      /* Verde escurecido para leitura */
+  --green: #059669;
   --green-dim: #D1FAE5;
   --amber: #EA580C; 
   --amber-dim: #FFEDD5;
-  --red: #DC2626;        /* Vermelho escurecido para leitura */
+  --red: #DC2626;
   --red-dim: #FEE2E2;
-  --text: #0F172A;       /* Texto principal (quase preto) */
+  --text: #0F172A;
   --text2: #334155; 
   --text3: #64748B; 
   --border: rgba(15, 23, 42, 0.1); 
@@ -52,7 +53,8 @@ body.light-theme {
   --card: #FFFFFF; 
   --card2: #F8FAFC;
 }
-body,*{font-family:var(--font);color:var(--text)}
+
+body,*{font-family:var(--font);color:var(--text); transition: background-color 0.3s, color 0.3s;}
 
 .app {
   background: var(--navy);
@@ -318,15 +320,7 @@ select{padding:5px 9px;font-size:12px;border:1px solid var(--border);border-radi
       <svg viewBox="0 0 20 20"><path d="M9 3a6 6 0 100 12A6 6 0 009 3zm-8 6a8 8 0 1114.32 4.906l4.387 4.387-1.414 1.414-4.387-4.387A8 8 0 011 9z"/></svg>
       <input type="text" id="global-search" placeholder="Buscar aluno ou matrícula..." oninput="globalSearch(this.value)"/>
     </div>
-    <div class="top-actions">
-  <div class="top-search">
-    </div>
-  
-  <button class="btn-icon" onclick="window.toggleTheme()" id="btn-theme" style="font-size:16px; padding:2px 8px;">☀️</button>
-  
-  <button class="btn-green" onclick="window.exportBackup()">Backup</button>
-  <span class="saved-tag" id="saved-tag">Nuvem Sincronizada ✓</span>
-</div>
+    <button class="btn-icon" onclick="window.toggleTheme()" id="btn-theme" style="font-size:16px; padding:2px 8px;">☀️</button>
     <button class="btn-green" onclick="exportBackup()">Backup</button>
     <span class="saved-tag" id="saved-tag">Nuvem Sincronizada ✓</span>
   </div>
@@ -403,6 +397,22 @@ select{padding:5px 9px;font-size:12px;border:1px solid var(--border);border-radi
 <script>
 let nid=2000;function uid(){return 'u'+(nid++)}
 
+// --- LÓGICA DO TEMA CLARO/ESCURO ---
+window.toggleTheme = function() {
+  const isLight = document.body.classList.toggle('light-theme');
+  document.getElementById('btn-theme').textContent = isLight ? '🌙' : '☀️';
+  localStorage.setItem('diario_theme', isLight ? 'light' : 'dark');
+};
+
+// Verifica qual era o tema escolhido ao carregar a página
+if (localStorage.getItem('diario_theme') === 'light') {
+  document.body.classList.add('light-theme');
+  window.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('btn-theme').textContent = '🌙';
+  });
+}
+// ------------------------------------
+
 window.flashSync = function(){
   const el=document.getElementById('saved-tag');
   el.style.opacity='1';
@@ -416,20 +426,6 @@ function defDB(){return{
 
 var db = defDB(); 
 let actTid=null, actTab='notas', mAtivCtx=null, editAtivId=null, mObsCtx=null, mJustCtx=null;
-
-  // --- LÓGICA DO TEMA CLARO/ESCURO ---
-window.toggleTheme = function() {
-  const isLight = document.body.classList.toggle('light-theme');
-  document.getElementById('btn-theme').textContent = isLight ? '🌙' : '☀️';
-  localStorage.setItem('diario_theme', isLight ? 'light' : 'dark');
-};
-
-// Verifica qual era o tema escolhido ao carregar a página
-if (localStorage.getItem('diario_theme') === 'light') {
-  document.body.classList.add('light-theme');
-  document.getElementById('btn-theme').textContent = '🌙';
-}
-// ------------------------------------
 
 window.saveDB = function() {
   if (window.cloudSave) {
@@ -751,16 +747,14 @@ function rConfig(){
 
 function openAtiv(un, aid = null){
   mAtivCtx = un;
-  editAtivId = aid; // Marca se estamos editando ou criando
+  editAtivId = aid; 
   
   if (aid) {
-    // Modo Edição
     const a = avs(actTid)[un].find(x => x.id === aid);
     document.getElementById('m-ativ-title').textContent = `Editar atividade — ${un==='u1'?'Unidade I':'Unidade II'}`;
     document.getElementById('i-atnome').value = a.nome;
     document.getElementById('i-atval').value = a.val;
   } else {
-    // Modo Criação
     document.getElementById('m-ativ-title').textContent = `Nova atividade — ${un==='u1'?'Unidade I':'Unidade II'}`;
     document.getElementById('i-atnome').value = '';
     document.getElementById('i-atval').value = '10';
@@ -774,14 +768,12 @@ function saveAtiv(){
   if(!nome){alert('Informe o nome');return}
   
   if (editAtivId) {
-    // Salva Edição
     const a = avs(actTid)[mAtivCtx].find(x => x.id === editAtivId);
     if (a) {
       a.nome = nome;
       a.val = val;
     }
   } else {
-    // Cria Nova
     const id=uid();
     avs(actTid)[mAtivCtx].push({id,nome,val});
     als(actTid).forEach(al=>{if(!al.notas)al.notas={};al.notas[id]=0});
@@ -887,7 +879,7 @@ function dupTurma(){
   db.turmas.push({id,sem:semId,nome,disc:src.disc,carga:src.carga,arquivada:false});
   const sa=avs(actTid);db.atividades[id]={u1:sa.u1.map(a=>({...a,id:uid()})),u2:sa.u2.map(a=>({...a,id:uid()}))};
   db.frequencias[id]=[];db.alunos[id]=[];
-  cm('m-dup');actTid=id;saveDB(); // A nuvem chamará o renderSidebar e renderMain
+  cm('m-dup');actTid=id;saveDB(); 
 }
 
 function importCSV(){
