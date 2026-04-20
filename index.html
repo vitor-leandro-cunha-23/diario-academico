@@ -28,7 +28,6 @@
 }
 body,*{font-family:var(--font);color:var(--text)}
 
-/* CORREÇÕES DE ROLAGEM E LAYOUT APLICADAS AQUI */
 .app {
   background: var(--navy);
   height: 100vh; 
@@ -77,7 +76,6 @@ body,*{font-family:var(--font);color:var(--text)}
 .turma-meta{font-size:10px;color:var(--text3);margin-top:1px}
 .sb-bottom{padding:.75rem .875rem;margin-top:auto;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:6px}
 
-/* MAIN AGORA ROLA LIVREMENTE */
 .main {
   background: var(--navy);
   padding: 1.25rem;
@@ -255,7 +253,6 @@ select{padding:5px 9px;font-size:12px;border:1px solid var(--border);border-radi
   <div class="modal-hd"><h3 id="m-ativ-title">Nova atividade</h3></div>
   <div class="field"><label>Nome</label><input id="i-atnome" placeholder="Ex: Prova 1, Trabalho..."/></div>
   <div class="field"><label>Valor máximo</label><input id="i-atval" type="number" min="0.1" max="100" step="0.5" value="10"/></div>
-  <div class="field"><label>Peso ponderado</label><input id="i-atpeso" type="number" min="0.1" max="10" step="0.1" value="1"/></div>
   <div class="modal-btns"><button class="btn" onclick="cm('m-ativ')">Cancelar</button><button class="btn-accent" onclick="saveAtiv()">Salvar</button></div>
 </div></div>
 
@@ -345,26 +342,22 @@ select{padding:5px 9px;font-size:12px;border:1px solid var(--border);border-radi
   const app = initializeApp(firebaseConfig);
   const fstore = getFirestore(app);
   
-  // Caminho onde seus dados serão salvos no banco. 
   const docRef = doc(fstore, "diario", "dados_professor");
 
-  // OUVINTE EM TEMPO REAL: Se a nuvem mudar, a tela atualiza
   onSnapshot(docRef, (docSnap) => {
     if (docSnap.exists()) {
-      window.db = docSnap.data(); // Atualiza a variável global
-      if (window.renderApp) window.renderApp(); // Manda a tela redesenhar
+      window.db = docSnap.data(); 
+      if (window.renderApp) window.renderApp(); 
     } else {
-      // Se for o primeiro acesso, cria o arquivo na nuvem baseado no banco padrão
       window.cloudSave(); 
     }
   });
 
-  // PONTE: Expõe a função de salvar para que o seu script principal possa usar
   window.cloudSave = async () => {
     try {
       if (window.db) {
         await setDoc(docRef, window.db);
-        if (window.flashSync) window.flashSync(); // Pisca o botão
+        if (window.flashSync) window.flashSync(); 
       }
     } catch (e) {
       console.error("Erro ao sincronizar com a Nuvem:", e);
@@ -375,7 +368,6 @@ select{padding:5px 9px;font-size:12px;border:1px solid var(--border);border-radi
 <script>
 let nid=2000;function uid(){return 'u'+(nid++)}
 
-// Função visual para confirmar que salvou na nuvem
 window.flashSync = function(){
   const el=document.getElementById('saved-tag');
   el.style.opacity='1';
@@ -383,39 +375,28 @@ window.flashSync = function(){
   window._ft=setTimeout(()=>el.style.opacity='0',2000)
 };
 
-// Banco de dados padrão (Usado caso a nuvem esteja vazia)
 function defDB(){return{
   semestres:[], turmas:[], alunos:{}, atividades:{}, frequencias:{}, presencas:{}, justificativas:{}, historico:{}, semCollapsed:{}
 }}
 
-// Variáveis Globais
-var db = defDB(); // Inicializa vazio, o Firebase irá sobrescrever assim que carregar
-let actTid=null, actTab='notas', mAtivCtx=null, mObsCtx=null, mJustCtx=null;
+var db = defDB(); 
+let actTid=null, actTab='notas', mAtivCtx=null, editAtivId=null, mObsCtx=null, mJustCtx=null;
 
-// FUNÇÃO UNIVERSAL DE SALVAMENTO (Substitui o localStorage)
 window.saveDB = function() {
   if (window.cloudSave) {
-    window.cloudSave(); // Chama a ponte do Firebase
+    window.cloudSave(); 
   }
 };
-// Caso algum botão seu ainda chame saveRemoteDB
 function saveRemoteDB() { saveDB(); }
 
-// FUNÇÃO UNIVERSAL DE RENDERIZAÇÃO
 window.renderApp = function() {
   renderSidebar();
   if (actTid) { 
     renderMain(); 
   } else {
-    // Se não tiver turma ativa após carregar do firebase, mostra mensagem padrão
     document.getElementById('main-area').innerHTML = `<div class="no-turma"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg><h3>Pronto!</h3><p>Selecione ou crie uma turma para começar a gerir seu diário.</p></div>`;
   }
 };
-
-
-// -------------------------------------------------------------
-// O RESTANTE É EXATAMENTE O SEU CÓDIGO NATIVO INTOCADO
-// -------------------------------------------------------------
 
 const COLORS=['#4FC3F7','#4CAF82','#F59E3F','#EF9FBD','#B39DDB','#80DEEA','#FFCC80','#CE93D8'];
 function turmaColor(tid){const idx=Object.keys(db.turmas||{}).indexOf?db.turmas.findIndex(t=>t.id===tid)%COLORS.length:0;return COLORS[Math.max(0,db.turmas.findIndex(t=>t.id===tid))%COLORS.length]}
@@ -432,10 +413,11 @@ function fmtD(d){const[y,m,dd]=d.split('-');return`${dd}/${m}`}
 function fph(c){return c===40?2:3}
 function maxF(c){return Math.floor(c*.25)}
 
+// NOVO CÁLCULO DE NOTA (Soma Direta)
 function notaU(al,tid,un){
-  const av=avs(tid)[un];if(!av.length)return 0;
-  const sp=av.reduce((s,a)=>s+a.peso,0);
-  return av.reduce((s,a)=>s+((parseFloat(al.notas[a.id])||0)/a.val*10*(a.peso/sp)),0);
+  const av=avs(tid)[un];
+  if(!av.length) return 0;
+  return av.reduce((s,a) => s + (parseFloat(al.notas[a.id]) || 0), 0);
 }
 function med2(n1,n2){return(n1+n2)/2}
 function sit(m){return m>=7?['Aprovado','b-ap']:m>=4?['Recuperação','b-re']:['Reprovado','b-rp']}
@@ -526,6 +508,22 @@ function renderTab(){
   else if(actTab==='resumo')rResumo();else rHist();
 }
 
+// NAVEGAÇÃO DE INPUTS COM O ENTER
+function navEnter(e, el) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    el.blur(); // Dispara o salvamento (onchange)
+    const atId = el.dataset.at;
+    const inputs = Array.from(document.querySelectorAll(`input[data-at="${atId}"]`));
+    const currentIndex = inputs.indexOf(el);
+    if (currentIndex >= 0 && currentIndex < inputs.length - 1) {
+      const nextInput = inputs[currentIndex + 1];
+      nextInput.focus();
+      nextInput.select(); // Seleciona o valor para fácil edição
+    }
+  }
+}
+
 function rNotas(){
   const tid=actTid;const av=avs(tid);const lista=als(tid);
   let html=`<div class="action-row">
@@ -541,11 +539,16 @@ function rNotas(){
   if(av.u1.length)html+=`<th colspan="${av.u1.length+1}" style="border-left:1px solid var(--border2);color:#9DB8CC">Unidade I</th>`;
   if(av.u2.length)html+=`<th colspan="${av.u2.length+1}" style="border-left:1px solid var(--border2);color:#9DB8CC">Unidade II</th>`;
   html+=`<th>Média</th><th>Situação</th><th></th></tr><tr><th></th>`;
-  av.u1.forEach((a,i)=>html+=`<th style="border-left:${i===0?'1px solid var(--border2)':'none'};font-weight:500;text-transform:none;letter-spacing:0;font-size:11px;color:var(--text2)">${a.nome}<br><span style="font-size:9px;color:var(--text3);font-family:var(--mono)">/${a.val} p${a.peso}</span></th>`);
-  if(av.u1.length)html+=`<th style="color:#4FC3F7;border-left:1px solid var(--border2);text-transform:none;letter-spacing:0">U1 /10</th>`;
-  av.u2.forEach((a,i)=>html+=`<th style="border-left:${i===0?'1px solid var(--border2)':'none'};font-weight:500;text-transform:none;letter-spacing:0;font-size:11px;color:var(--text2)">${a.nome}<br><span style="font-size:9px;color:var(--text3);font-family:var(--mono)">/${a.val} p${a.peso}</span></th>`);
-  if(av.u2.length)html+=`<th style="color:#4CAF82;border-left:1px solid var(--border2);text-transform:none;letter-spacing:0">U2 /10</th>`;
+  
+  // Headers Unidade 1
+  av.u1.forEach((a,i)=>html+=`<th style="border-left:${i===0?'1px solid var(--border2)':'none'};font-weight:500;text-transform:none;letter-spacing:0;font-size:11px;color:var(--text2)">${a.nome}<br><span style="font-size:9px;color:var(--text3);font-family:var(--mono)">/${a.val} pts</span></th>`);
+  if(av.u1.length)html+=`<th style="color:#4FC3F7;border-left:1px solid var(--border2);text-transform:none;letter-spacing:0">U1 Soma</th>`;
+  
+  // Headers Unidade 2
+  av.u2.forEach((a,i)=>html+=`<th style="border-left:${i===0?'1px solid var(--border2)':'none'};font-weight:500;text-transform:none;letter-spacing:0;font-size:11px;color:var(--text2)">${a.nome}<br><span style="font-size:9px;color:var(--text3);font-family:var(--mono)">/${a.val} pts</span></th>`);
+  if(av.u2.length)html+=`<th style="color:#4CAF82;border-left:1px solid var(--border2);text-transform:none;letter-spacing:0">U2 Soma</th>`;
   html+=`<th></th><th></th><th></th></tr></thead><tbody>`;
+  
   lista.forEach(al=>{
     const nu1=notaU(al,tid,'u1'),nu2=notaU(al,tid,'u2');
     const m=med2(nu1,nu2);const[st,cls]=sit(m);
@@ -554,10 +557,15 @@ function rNotas(){
       <div class="avatar" style="background:${bg};color:${c};border:1px solid ${border}">${initials(al.nome)}</div>
       <div><div style="font-weight:500;font-size:12px">${al.nome}</div><div style="font-size:10px;color:var(--text3);font-family:var(--mono)">${al.mat}</div></div>
     </div></td>`;
-    av.u1.forEach((a,i)=>html+=`<td style="border-left:${i===0?'1px solid var(--border)':'none'}"><input type="number" min="0" max="${a.val}" step="0.5" value="${(al.notas[a.id]||0).toFixed(1)}" data-al="${al.id}" data-at="${a.id}" data-max="${a.val}" onchange="updN(this)"/></td>`);
+    
+    // Inputs U1 (com onkeydown adicionado)
+    av.u1.forEach((a,i)=>html+=`<td style="border-left:${i===0?'1px solid var(--border)':'none'}"><input type="number" min="0" max="${a.val}" step="0.5" value="${(al.notas[a.id]||0).toFixed(1)}" data-al="${al.id}" data-at="${a.id}" data-max="${a.val}" onchange="updN(this)" onkeydown="navEnter(event, this)"/></td>`);
     if(av.u1.length)html+=`<td style="font-weight:700;color:#4FC3F7;border-left:1px solid var(--border);font-family:var(--mono);font-size:13px">${nu1.toFixed(2)}</td>`;
-    av.u2.forEach((a,i)=>html+=`<td style="border-left:${i===0?'1px solid var(--border)':'none'}"><input type="number" min="0" max="${a.val}" step="0.5" value="${(al.notas[a.id]||0).toFixed(1)}" data-al="${al.id}" data-at="${a.id}" data-max="${a.val}" onchange="updN(this)"/></td>`);
+    
+    // Inputs U2 (com onkeydown adicionado)
+    av.u2.forEach((a,i)=>html+=`<td style="border-left:${i===0?'1px solid var(--border)':'none'}"><input type="number" min="0" max="${a.val}" step="0.5" value="${(al.notas[a.id]||0).toFixed(1)}" data-al="${al.id}" data-at="${a.id}" data-max="${a.val}" onchange="updN(this)" onkeydown="navEnter(event, this)"/></td>`);
     if(av.u2.length)html+=`<td style="font-weight:700;color:#4CAF82;border-left:1px solid var(--border);font-family:var(--mono);font-size:13px">${nu2.toFixed(2)}</td>`;
+    
     html+=`<td style="font-weight:700;font-family:var(--mono);font-size:14px;color:var(--text)">${m.toFixed(2)}</td>
     <td><span class="badge ${cls}">${st}</span></td>
     <td><button class="obs-btn" onclick="openObs('${al.id}')">${al.obs?'obs ✓':'obs'}</button></td>
@@ -674,30 +682,65 @@ function addDia(){
 }
 function delDia(did){if(!confirm('Remover aula?'))return;db.frequencias[actTid]=dias(actTid).filter(d=>d.id!==did);delete db.presencas[pk(actTid,did)];saveDB();renderTab()}
 
+// CONFIGURAÇÃO DE ATIVIDADES (Edição Adicionada)
 function rConfig(){
   const tid=actTid;const av=avs(tid);
   function uH(un,label,cor){
     const tot=av[un].reduce((s,a)=>s+a.val,0);
     let h=`<div class="card"><div class="card-hd">
       <div><div class="card-title" style="color:${cor}">${label}</div>
-      <div class="card-sub">Total declarado: ${tot.toFixed(1)} pts · Notas normalizadas 0–10 com peso ponderado</div></div>
+      <div class="card-sub">Soma das atividades: ${tot.toFixed(1)} pts</div></div>
       <button class="btn-accent" onclick="openAtiv('${un}')">+ Atividade</button></div>`;
     if(!av[un].length)h+=`<div class="empty">Nenhuma atividade cadastrada.</div>`;
-    else{h+=`<table><thead><tr><th>Atividade</th><th>Valor máx.</th><th>Peso</th><th></th></tr></thead><tbody>`;
-      av[un].forEach(a=>h+=`<tr><td style="font-weight:500">${a.nome}</td><td style="font-family:var(--mono)">${a.val}</td><td style="font-family:var(--mono)">${a.peso}</td><td style="text-align:right"><button class="btn-del" onclick="delAtiv('${un}','${a.id}')">Remover</button></td></tr>`);
+    else{h+=`<table><thead><tr><th>Atividade</th><th>Valor máx.</th><th>Ações</th></tr></thead><tbody>`;
+      av[un].forEach(a=>h+=`<tr><td style="font-weight:500">${a.nome}</td><td style="font-family:var(--mono)">${a.val}</td><td style="text-align:right"><button class="btn-icon" style="margin-right:6px" onclick="openAtiv('${un}','${a.id}')">Editar</button><button class="btn-del" onclick="delAtiv('${un}','${a.id}')">Remover</button></td></tr>`);
       h+=`</tbody></table>`;}
     return h+'</div>';
   }
   document.getElementById('tab-c').innerHTML=uH('u1','Unidade I','#4FC3F7')+uH('u2','Unidade II','#4CAF82');
 }
-function openAtiv(un){mAtivCtx=un;document.getElementById('m-ativ-title').textContent=`Nova atividade — ${un==='u1'?'Unidade I':'Unidade II'}`;document.getElementById('i-atnome').value='';document.getElementById('i-atval').value='10';document.getElementById('i-atpeso').value='1';om('m-ativ')}
+
+function openAtiv(un, aid = null){
+  mAtivCtx = un;
+  editAtivId = aid; // Marca se estamos editando ou criando
+  
+  if (aid) {
+    // Modo Edição
+    const a = avs(actTid)[un].find(x => x.id === aid);
+    document.getElementById('m-ativ-title').textContent = `Editar atividade — ${un==='u1'?'Unidade I':'Unidade II'}`;
+    document.getElementById('i-atnome').value = a.nome;
+    document.getElementById('i-atval').value = a.val;
+  } else {
+    // Modo Criação
+    document.getElementById('m-ativ-title').textContent = `Nova atividade — ${un==='u1'?'Unidade I':'Unidade II'}`;
+    document.getElementById('i-atnome').value = '';
+    document.getElementById('i-atval').value = '10';
+  }
+  om('m-ativ');
+}
+
 function saveAtiv(){
-  const nome=document.getElementById('i-atnome').value.trim();const val=parseFloat(document.getElementById('i-atval').value)||10;const peso=parseFloat(document.getElementById('i-atpeso').value)||1;
+  const nome=document.getElementById('i-atnome').value.trim();
+  const val=parseFloat(document.getElementById('i-atval').value)||10;
   if(!nome){alert('Informe o nome');return}
-  const id=uid();avs(actTid)[mAtivCtx].push({id,nome,val,peso});
-  als(actTid).forEach(al=>{if(!al.notas)al.notas={};al.notas[id]=0});
+  
+  if (editAtivId) {
+    // Salva Edição
+    const a = avs(actTid)[mAtivCtx].find(x => x.id === editAtivId);
+    if (a) {
+      a.nome = nome;
+      a.val = val;
+    }
+  } else {
+    // Cria Nova
+    const id=uid();
+    avs(actTid)[mAtivCtx].push({id,nome,val});
+    als(actTid).forEach(al=>{if(!al.notas)al.notas={};al.notas[id]=0});
+  }
+  
   cm('m-ativ');saveDB();renderTab();
 }
+
 function delAtiv(un,aid){if(!confirm('Remover atividade?'))return;avs(actTid)[un]=avs(actTid)[un].filter(a=>a.id!==aid);als(actTid).forEach(al=>delete al.notas[aid]);saveDB();renderTab()}
 
 function rResumo(){
@@ -833,7 +876,7 @@ function addTurma(){
   if(!nome){alert('Informe o nome');return}
   const id=uid();db.turmas.push({id,sem:semId,nome,disc:disc||'—',carga,arquivada:false});db.atividades[id]={u1:[],u2:[]};db.frequencias[id]=[];db.alunos[id]=[];
   cm('m-turma');document.getElementById('i-tnome').value='';document.getElementById('i-tdisc').value='';
-  actTid=id; saveDB(); // A nuvem se encarrega de chamar os renders
+  actTid=id; saveDB(); 
 }
 function addAluno(){
   const nome=document.getElementById('i-anome').value.trim();const mat=document.getElementById('i-amat').value.trim();
@@ -847,7 +890,7 @@ function addAluno(){
 // LÓGICA DE EXPORTAÇÃO
 function exXlsNotas(){
   const tid=actTid;const t=tur(tid);const s=sem(t.sem);const av=avs(tid);const lista=als(tid);
-  const hd=['Aluno','Matrícula',...av.u1.map(a=>`U1-${a.nome}`),'U1/10',...av.u2.map(a=>`U2-${a.nome}`),'U2/10','Média','Situação'];
+  const hd=['Aluno','Matrícula',...av.u1.map(a=>`U1-${a.nome}`),'U1 Total',...av.u2.map(a=>`U2-${a.nome}`),'U2 Total','Média','Situação'];
   const rows=lista.map(al=>{const nu1=notaU(al,tid,'u1'),nu2=notaU(al,tid,'u2'),m=med2(nu1,nu2);const[st]=sit(m);return[al.nome,al.mat,...av.u1.map(a=>(al.notas[a.id]||0).toFixed(1)),nu1.toFixed(2),...av.u2.map(a=>(al.notas[a.id]||0).toFixed(1)),nu2.toFixed(2),m.toFixed(2),st]});
   const ws=XLSX.utils.aoa_to_sheet([hd,...rows]);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Notas');XLSX.writeFile(wb,`notas_${s.label}_${t.nome.replace(/[^a-z0-9]/gi,'_')}.xlsx`);
 }
@@ -861,7 +904,7 @@ function exPdfNotas(){
   const{jsPDF}=window.jspdf;const doc=new jsPDF({orientation:'landscape'});const tid=actTid;const t=tur(tid);const s=sem(t.sem);const av=avs(tid);const lista=als(tid);
   doc.setFontSize(13);doc.setTextColor(20,30,50);doc.text(`Notas — ${t.nome} (${t.disc}) · ${s.label}`,14,13);
   doc.setFontSize(8);doc.setTextColor(100,120,140);doc.text(`Emitido em ${new Date().toLocaleDateString('pt-BR')}`,14,19);
-  const head=[['Aluno','Matrícula',...av.u1.map(a=>`U1 ${a.nome}`),'U1/10',...av.u2.map(a=>`U2 ${a.nome}`),'U2/10','Média','Situação']];
+  const head=[['Aluno','Matrícula',...av.u1.map(a=>`U1 ${a.nome}`),'U1 Total',...av.u2.map(a=>`U2 ${a.nome}`),'U2 Total','Média','Situação']];
   const body=lista.map(al=>{const nu1=notaU(al,tid,'u1'),nu2=notaU(al,tid,'u2'),m=med2(nu1,nu2);const[st]=sit(m);return[al.nome,al.mat,...av.u1.map(a=>(al.notas[a.id]||0).toFixed(1)),nu1.toFixed(2),...av.u2.map(a=>(al.notas[a.id]||0).toFixed(1)),nu2.toFixed(2),m.toFixed(2),st]});
   doc.autoTable({head,body,startY:24,styles:{fontSize:8,textColor:[30,47,66]},headStyles:{fillColor:[13,27,42],textColor:[232,239,245]},alternateRowStyles:{fillColor:[240,245,250]},didParseCell(d){if(d.section==='body'){const v=d.cell.text[0];if(v==='Aprovado')d.cell.styles.textColor=[27,80,53];else if(v==='Recuperação')d.cell.styles.textColor=[90,58,16];else if(v==='Reprovado')d.cell.styles.textColor=[90,26,26];}}});
   doc.save(`notas_${s.label}_${t.nome.replace(/[^a-z0-9]/gi,'_')}.pdf`);
@@ -883,11 +926,11 @@ function exBoletim(alId){
   doc.setFontSize(16);doc.setTextColor(232,239,245);doc.text('Boletim Individual',14,16);
   doc.setFontSize(10);doc.setTextColor(148,168,186);doc.text(`${t.nome} (${t.disc}) · ${s.label}`,14,24);doc.text(`Emitido: ${new Date().toLocaleDateString('pt-BR')}`,14,30);
   doc.setFontSize(13);doc.setTextColor(30,47,66);doc.text(`${al.nome}`,14,45);doc.setFontSize(9);doc.setTextColor(90,114,134);doc.text(`Matrícula: ${al.mat}`,14,51);
-  const rows=[...av.u1.map(a=>[`U1 – ${a.nome}`,`${(al.notas[a.id]||0).toFixed(1)} / ${a.val}`]),...av.u2.map(a=>[`U2 – ${a.nome}`,`${(al.notas[a.id]||0).toFixed(1)} / ${a.val}`]),['Unidade I (normalizado 0–10)',nu1.toFixed(2)],['Unidade II (normalizado 0–10)',nu2.toFixed(2)],['Média Final',m.toFixed(2)],['Situação',st]];
+  const rows=[...av.u1.map(a=>[`U1 – ${a.nome}`,`${(al.notas[a.id]||0).toFixed(1)} / ${a.val}`]),...av.u2.map(a=>[`U2 – ${a.nome}`,`${(al.notas[a.id]||0).toFixed(1)} / ${a.val}`]),['Total Unidade I',nu1.toFixed(2)],['Total Unidade II',nu2.toFixed(2)],['Média Final',m.toFixed(2)],['Situação',st]];
   if(nr>0)rows.push(['Nota de Recuperação',nr.toFixed(1)],['Média Final (pós-recup.)',((m+nr)/2).toFixed(2)]);
   rows.push([`Faltas (horas) / Máximo`,`${f.fh}h / ${f.mxF}h`],['Frequência',`${f.pct}%`]);
   doc.autoTable({head:[['Item','Valor']],body:rows,startY:58,styles:{fontSize:9,textColor:[30,47,66]},headStyles:{fillColor:[13,27,42],textColor:[232,239,245]},
-    didParseCell(d){if(d.section==='body'&&['Média Final','Situação','Unidade I (normalizado 0–10)','Unidade II (normalizado 0–10)'].includes(d.cell.raw))d.cell.styles.fontStyle='bold';}});
+    didParseCell(d){if(d.section==='body'&&['Média Final','Situação','Total Unidade I','Total Unidade II'].includes(d.cell.raw))d.cell.styles.fontStyle='bold';}});
   if(al.obs){const y=doc.lastAutoTable.finalY+6;doc.setFontSize(8);doc.setTextColor(90,114,134);doc.text(`Obs.: ${al.obs}`,14,y);}
   doc.save(`boletim_${al.nome.replace(/[^a-z0-9]/gi,'_')}_${s.label}.pdf`);
 }
@@ -907,7 +950,6 @@ function om(id){document.getElementById(id).classList.add('open')}
 function cm(id){document.getElementById(id).classList.remove('open')}
 document.querySelectorAll('.modal-wrap').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open')}));
 
-// Registro do Service Worker (Para PWA)
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').catch(err => console.log('SW falhou: ', err));
