@@ -377,29 +377,33 @@ select{padding:5px 9px;font-size:12px;border:1px solid var(--border);border-radi
   
   const docRef = doc(fstore, "diario", "dados_professor");
 
-  // ... (código firebaseConfig, app, fstore, docRef permanece o mesmo)
-
   onSnapshot(docRef, (docSnap) => {
+    let estruturaPadrao = { semestres:[], turmas:[], alunos:{}, atividades:{}, frequencias:{}, presencas:{}, justificativas:{}, historico:{}, semCollapsed:{} };
+    
     if (docSnap.exists()) {
-      window.db = docSnap.data(); 
-      console.log("Dados carregados do Firestore:", window.db); // Adicione um log para ver o que é carregado
+      let loadedData = docSnap.data(); 
+      // VACINA: Se a nuvem gravou um objeto vazio por acidente, restaura a estrutura base
+      if (!loadedData.semestres) {
+        loadedData = typeof defDB === 'function' ? defDB() : estruturaPadrao;
+      }
+      window.db = loadedData; 
       if (window.renderApp) window.renderApp(); 
     } else {
-      console.log("Documento não encontrado, inicializando e salvando.");
-      window.db = {}; // Inicializa window.db com um objeto vazio ou seus dados padrão
+      // Cria a estrutura completa em vez de usar apenas {}
+      window.db = typeof defDB === 'function' ? defDB() : estruturaPadrao; 
       window.cloudSave(); 
     }
   });
 
   window.cloudSave = async () => {
     try {
-      // Remover a condição `if (window.db)` aqui, pois agora garantimos que window.db sempre terá um valor
-      // Você pode adicionar uma verificação mais robusta se window.db deve sempre ter uma estrutura específica
-      await setDoc(docRef, window.db);
-      console.log("Dados salvos no Firestore."); // Log para confirmar o salvamento
-      if (window.flashSync) window.flashSync(); 
+      // Bloqueio de segurança: só permite gravar na nuvem se a estrutura estiver intacta
+      if (window.db && window.db.semestres) { 
+        await setDoc(docRef, window.db);
+        if (window.flashSync) window.flashSync(); 
+      }
     } catch (e) {
-      console.error("Erro ao sincronizar:", e);
+      console.error("Erro ao sincronizar com a Nuvem:", e);
     }
   };
 </script>
