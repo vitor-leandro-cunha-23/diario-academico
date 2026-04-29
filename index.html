@@ -375,7 +375,7 @@ select{padding:5px 9px;font-size:12px;border:1px solid var(--border);border-radi
   const app = initializeApp(firebaseConfig);
   const fstore = getFirestore(app);
   
-  const docRef = doc(fstore, "diario", "dados_professor");
+ const docRef = doc(fstore, "utilizadores", "meu_diario_v1");
 
   onSnapshot(docRef, (docSnap) => {
     let estruturaPadrao = { semestres:[], turmas:[], alunos:{}, atividades:{}, frequencias:{}, presencas:{}, justificativas:{}, historico:{}, semCollapsed:{} };
