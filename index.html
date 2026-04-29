@@ -375,39 +375,40 @@ select{padding:5px 9px;font-size:12px;border:1px solid var(--border);border-radi
   const app = initializeApp(firebaseConfig);
   const fstore = getFirestore(app);
   
- const docRef = doc(fstore, "utilizadores", "meu_diario_v1");
+  // APONTANDO PARA A "GAVETA" ANTIGA ONDE OS DADOS PODEM ESTAR
+  const docRef = doc(fstore, "utilizadores", "meu_diario_v1");
 
   onSnapshot(docRef, (docSnap) => {
-    let estruturaPadrao = { semestres:[], turmas:[], alunos:{}, atividades:{}, frequencias:{}, presencas:{}, justificativas:{}, historico:{}, semCollapsed:{} };
-    
+    let padrao = { semestres:[], turmas:[], alunos:{}, atividades:{}, frequencias:{}, presencas:{}, justificativas:{}, historico:{}, semCollapsed:{} };
+
     if (docSnap.exists()) {
-      let loadedData = docSnap.data(); 
-      // VACINA: Se a nuvem gravou um objeto vazio por acidente, restaura a estrutura base
-      if (!loadedData.semestres) {
-        loadedData = typeof defDB === 'function' ? defDB() : estruturaPadrao;
+      let loaded = docSnap.data(); 
+      // VACINA: Se a nuvem estiver vazia, não deixa quebrar o app
+      if (!loaded.semestres) {
+        loaded = padrao;
       }
-      window.db = loadedData; 
+      window.db = loaded; 
       if (window.renderApp) window.renderApp(); 
     } else {
-      // Cria a estrutura completa em vez de usar apenas {}
-      window.db = typeof defDB === 'function' ? defDB() : estruturaPadrao; 
-      window.cloudSave(); 
+      console.log("Nenhum dado encontrado neste caminho.");
+      window.db = padrao;
+      // Não chamamos o cloudSave aqui para não sobrescrever o que pode existir
     }
   });
 
   window.cloudSave = async () => {
     try {
-      // Bloqueio de segurança: só permite gravar na nuvem se a estrutura estiver intacta
-      if (window.db && window.db.semestres) { 
+      // Bloqueio de segurança: só salva se houver uma estrutura válida
+      if (window.db && window.db.semestres) {
         await setDoc(docRef, window.db);
         if (window.flashSync) window.flashSync(); 
       }
     } catch (e) {
-      console.error("Erro ao sincronizar com a Nuvem:", e);
+      console.error("Erro ao sincronizar:", e);
     }
   };
 </script>
-
+  
 <script>
 let nid=2000;function uid(){return 'u'+(nid++)}
 
